@@ -234,7 +234,7 @@ class ClothEnv(gym.Env):
         date = '{}'.format(datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
         base = 'gym-cloth-r{}-s{}-{}'.format(rank, step, date)
         tm_path = join(bhead, base)
-        randnum = np.random.randint(1000000)  # np.random instead of np_random :-)
+        randnum = 0 # np.random.randint(1000000)  # np.random instead of np_random :-)
         tm_path = '{}_r{}.obj'.format(tm_path, str(randnum).zfill(7))
         tm.export(tm_path)
 
@@ -270,7 +270,7 @@ class ClothEnv(gym.Env):
             )
         else:
             subprocess.call([
-                'blender', '--background', '--python', bfile, '--', tm_path,
+                '/Applications/Blender/blender.app', '--background', '--python', bfile, '--', tm_path,
                 str(self._hd), str(self._wd), str(init_side), self._init_type,
                 frame_path, self._oracle_reveal, use_depth, floor_path,
                 self.__add_dom_rand,
@@ -287,7 +287,7 @@ class ClothEnv(gym.Env):
         #Adi: Loading the occlusion state as well and saving it
         blender_path = tm_path.replace('.obj','.png')
         occlusion_path_pkl = tm_path.replace('.obj', '')
-        with open(occlusion_path_pkl, 'rb') as fp:
+        with open(occlusion_path_pkl, 'rb') as fp: #Vainavi: ERRORING HERE
             itemlist = pickle.load(fp)
             self._occlusion_vec = itemlist
 
@@ -736,13 +736,13 @@ class ClothEnv(gym.Env):
         if self._start_state:
             self.cloth = cloth = Cloth(params=self.cfg,
                                        render=self.render_gl,
-                                       random_state=self.np_random,
+                                       random_state=None,
                                        render_port=self.render_port,
                                        state=copy.deepcopy(self._start_state))
         else:
             self.cloth = cloth = Cloth(params=self.cfg,
                                        render=self.render_gl,
-                                       random_state=self.np_random,
+                                       random_state=None,
                                        render_port=self.render_port)
         assert len(cloth.pts) == self.num_points, \
                 "{} vs {}".format(len(cloth.pts), self.num_points)
@@ -766,6 +766,7 @@ class ClothEnv(gym.Env):
             self.debug_ax2.view_init(elev=5., azim=-50.)
             self.plt.ion()
             self.plt.tight_layout()
+
 
         # Handle starting states, assuming we don't already have one.
         if not self._start_state:
@@ -849,46 +850,99 @@ class ClothEnv(gym.Env):
             # short and attempt not to go out of bounds too much.
             # ------------------------------------------------------------------
             lim = 0.20
+            
+            # First pull. For random perturbations
+            # p0 = self.cloth.pts[0]
+            # if self._delta_actions:
+            #     dx0 = _randval_minabs(low=lim, high=lim, minabs=0.08)
+            #     dy0 = _randval_minabs(low=lim, high=lim, minabs=0.08)
+            #     dx0 = _prevent_oob(p0.x, dx0)
+            #     dy0 = _prevent_oob(p0.y, dy0)
+            #     action0 = (p0.x, p0.y, dx0, dy0)
+            # else:
+            #     raise NotImplementedError()
+            # action0 = self._convert_action_to_clip_space(action0)
+            # self.step(action0, initialize=True)
 
-            # First pull.
-            p0 = self.cloth.pts[ self.np_random.randint(len(self.cloth.pts)) ]
-            if self._delta_actions:
-                dx0 = _randval_minabs(low=-lim, high=lim, minabs=0.08)
-                dy0 = _randval_minabs(low=-lim, high=lim, minabs=0.08)
-                dx0 = _prevent_oob(p0.x, dx0)
-                dy0 = _prevent_oob(p0.y, dy0)
-                action0 = (p0.x, p0.y, dx0, dy0)
-            else:
-                raise NotImplementedError()
-            action0 = self._convert_action_to_clip_space(action0)
-            self.step(action0, initialize=True)
+            #########################
 
-            # Second pull.
-            p1 = self.cloth.pts[ self.np_random.randint(len(self.cloth.pts)) ]
-            if self._delta_actions:
-                dx1 = _randval_minabs(low=-lim, high=lim, minabs=0.08)
-                dy1 = _randval_minabs(low=-lim, high=lim, minabs=0.08)
-                dx1 = _prevent_oob(p1.x, dx1)
-                dy1 = _prevent_oob(p1.y, dy1)
-                action1 = (p1.x, p1.y, dx1, dy1)
-            else:
-                raise NotImplementedError()
-            action1 = self._convert_action_to_clip_space(action1)
-            self.step(action1, initialize=True)
+            # # Second pull. Set perturbations
+            # p1 = self.cloth.pts[(len(self.cloth.pts))//2]
+            # if self._delta_actions:
+            #     dx2 = _randval_minabs(low=lim, high=lim, minabs=0.08)
+            #     dy2 = _randval_minabs(low=lim, high=lim, minabs=0.08)
+            #     dx2 = _prevent_oob(p1.x, dx2)
+            #     dy2 = _prevent_oob(p1.y, dy2)
+            #     action1 = (p1.x, p1.y, dx2, dy2)
+            # else:
+            #     raise NotImplementedError()
+            # action1 = self._convert_action_to_clip_space(action1)
+            # self.step(action1, initialize=True)
 
-            # Third pull if the cloth looks too flat.
-            if self._compute_coverage() >= 0.90:
-                p2 = self.cloth.pts[ self.np_random.randint(len(self.cloth.pts)) ]
+            # # Third pull. Set perturbations 
+            # p2 = self.cloth.pts[len(self.cloth.pts)-1]
+            # if self._delta_actions:
+            #     dx1 = _randval_minabs(low=-lim, high=-lim, minabs=0.08)
+            #     dy1 = _randval_minabs(low=-lim, high=-lim, minabs=0.08)
+            #     dx1 = _prevent_oob(p2.x, dx1)
+            #     dy1 = _prevent_oob(p2.y, dy1)
+            #     action2 = (p2.x, p2.y, dx1, dy1)
+            # else:
+            #     raise NotImplementedError()
+            # action2 = self._convert_action_to_clip_space(action2)
+            # self.step(action2, initialize=True)
+
+            #########################
+
+            # Fold triangle 
+            if len(self.cloth.pts) == 32*32 or len(self.cloth.pts) == 30*30:
+                p1 = self.cloth.pts[0]
                 if self._delta_actions:
-                    dx2 = _randval_minabs(low=-lim, high=lim, minabs=0.08)
-                    dy2 = _randval_minabs(low=-lim, high=lim, minabs=0.08)
-                    dx2 = _prevent_oob(p2.x, dx2)
-                    dy2 = _prevent_oob(p2.y, dy2)
-                    action2 = (p2.x, p2.y, dx2, dy2)
+                    dx2 = 0.8
+                    dy2 = 0.8
+                    dx2 = _prevent_oob(p1.x, dx2)
+                    dy2 = _prevent_oob(p1.y, dy2)
+                    action1 = (p1.x, p1.y, dx2, dy2)
                 else:
                     raise NotImplementedError()
-                action2 = self._convert_action_to_clip_space(action2)
-                self.step(action2, initialize=True)
+                action1 = self._convert_action_to_clip_space(action1)
+                self.step(action1, initialize=True)
+            elif len(self.cloth.pts) == 16*16 or len(self.cloth.pts) == 20*20:
+                p1 = self.cloth.pts[0]
+                if self._delta_actions:
+                    dx2 = 0.83
+                    dy2 = 0.83
+                    dx2 = _prevent_oob(p1.x, dx2)
+                    dy2 = _prevent_oob(p1.y, dy2)
+                    action1 = (p1.x, p1.y, dx2, dy2)
+                else:
+                    raise NotImplementedError()
+                action1 = self._convert_action_to_clip_space(action1)
+                self.step(action1, initialize=True)
+            elif len(self.cloth.pts) == 8*8 or len(self.cloth.pts) == 10*10:
+                p1 = self.cloth.pts[0]
+                if self._delta_actions:
+                    dx2 = 0.95
+                    dy2 = 0.95
+                    dx2 = _prevent_oob(p1.x, dx2)
+                    dy2 = _prevent_oob(p1.y, dy2)
+                    action1 = (p1.x, p1.y, dx2, dy2)
+                else:
+                    raise NotImplementedError()
+                action1 = self._convert_action_to_clip_space(action1)
+                self.step(action1, initialize=True)
+            elif len(self.cloth.pts) == 64*64:
+                p1 = self.cloth.pts[0]
+                if self._delta_actions:
+                    dx2 = 0.75
+                    dy2 = 0.7 
+                    dx2 = _prevent_oob(p1.x, dx2)
+                    dy2 = _prevent_oob(p1.y, dy2)
+                    action1 = (p1.x, p1.y, dx2, dy2)
+                else:
+                    raise NotImplementedError()
+                action1 = self._convert_action_to_clip_space(action1)
+                self.step(action1, initialize=True)
 
         elif self._init_type == 'tier2':
             # ------------------------------------------------------------------
@@ -904,14 +958,14 @@ class ClothEnv(gym.Env):
             logger.debug("Cloth settled, now apply actions.")
 
             # Pick one of the two topmost corners ('top' -1, 'bottom' -25).
-            idx = -25 if self.np_random.rand() < 0.5 else -1
+            idx = -self.num_w if self.np_random.rand() < 0.5 else -1
 
             # Apply first pull, roughly towards the center (i.e., don't have
             # high dx0, make dy0 positive if bottom, reverse if not, etc).
             p0 = self.cloth.pts[ idx ]
             if self._delta_actions:
                 dx0 = self.np_random.uniform(0.30, 0.50) * init_side
-                if idx == -25:
+                if idx == -self.num_w:
                     dy0 = self.np_random.uniform(0.30, 0.60)
                 else:
                     dy0 = self.np_random.uniform(-0.60, -0.30)
@@ -924,7 +978,7 @@ class ClothEnv(gym.Env):
             # Now attempt to cover that corner. Here we can have a slightly
             # longer range of dx0, also make dy0 now reverse of earlier, but
             # dx0 has same magnitude as we pull in same general x direction.
-            if idx == -25:
+            if idx == -self.num_w:
                 p1 = self.cloth.pts[-19]
                 if self._delta_actions:
                     dx1 = self.np_random.uniform(0.30, 0.60) * init_side

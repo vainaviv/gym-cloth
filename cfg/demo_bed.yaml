@@ -14,9 +14,9 @@ cloth:
     orientation: 1          # Manages xyz orientation.
     width: 1                # Set to 1 for simplicity.
     height: 1               # Set to 1 for simplicity.
-    num_width_points: 25    # Number of points in x direction.
-    num_height_points: 25   # Number of points in y direction.
-    thickness: 0.0200       # For self-collisions; we do not want layers to collide.
+    num_width_points: 30    # Number of points in x direction.
+    num_height_points: 30   # Number of points in y direction.
+    thickness: 0.027 #0.027 works for 32x32    #0.02995 works for 16x16   #0.025 works for 8x8 and 64x64      # For self-collisions; we do not want layers to collide.
     pin_cond: 'y=0'         # Determines which points are pinned. See `cloth.pyx`.
     color_pts: 'diag1'      # Determines which points are colored. See `cloth.pyx`.
     plane_friction: 1.0     # Corresopnds to 184's 'friction' in the 'plane' struct. Assume plane has normal=(0,0,1).
@@ -41,6 +41,15 @@ env:
     reduce_factor: 0.0020   # Multiply raw directions by this to make actions smaller
     grip_radius: 0.009      # alternative: .003, larger radius means we grab more points
     reward_type: 'coverage-delta'   # See `ClothEnv` for possible types.
+    force_grab: False       # Should ONLY be true for evaluation, never for training.
+    clip_act_space: True    # Whether we assume our actions should be in [-1,1], might make it easier for RL
+    delta_actions: True     # If True, our action for length/angle are deltas in x and y space.
+    obs_type: 'blender'     # '1d' or 'blender'
+    oracle_reveal: 'False'  # If 'True', we compute the occlusion vector every time Blender is called (should only be True if using corner revealing demonstrator)
+    use_depth: 'False'      # If 'True', we use depth images for the training process instead of color images
+    use_dom_rand: 'False'    # If 'True', we use domain randomization (camera pose, color, etc.)
+    use_rgbd: 'False'
+
 
 # ------------------------------------------------------------------------------
 # Initialization parameters. Let's assume we can pinpoint one of the four
@@ -51,9 +60,10 @@ env:
 # ------------------------------------------------------------------------------
 
 init:
-    type: 'bed-like'            # Type of initialization method [e.g. 'single-corner-fold', 'drop-vertical']
+    type: 'tier1'               # Type of initialization method [e.g. 'single-corner-fold', 'drop-vertical']
     debug_matplotlib: False     # If we show matplotlib video of the initialization
     render_opengl: True         # If we show opengl rendering
+
 
 # ------------------------------------------------------------------------------
 # Logging. We add the date before the last `.log` in the file name.

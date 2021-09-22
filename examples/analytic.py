@@ -5,6 +5,7 @@ Use `demo_spaces.py` for other debugging.
 import subprocess
 import pkg_resources
 import numpy as np
+import torch
 import argparse
 import os
 from os.path import join
@@ -15,6 +16,7 @@ import logging
 import pickle
 import datetime
 import cv2
+import matplotlib as mpl
 from gym_cloth.envs import ClothEnv
 from collections import defaultdict
 np.set_printoptions(edgeitems=10, linewidth=180, suppress=True)
@@ -65,6 +67,42 @@ class Policy(object):
             dy *= 0.90
         return (x, y, cx, cy, dx, dy, dist)
 
+class SetActionsPolicy(Policy):
+
+    def __init__(self, actions):
+        super().__init__()
+        #self._method = 'rotation'
+        self._method = 'distance'
+        self._actions = np.copy(actions)
+
+    def get_action(self, obs, t):
+        """Analytic oracle corner policy.
+        """
+        action = self._actions[0]
+        self._actions = self._actions[1:]
+        return action
+
+class CornerPullingBCPolicy(Policy):
+
+    def __init__(self, env):
+        super().__init__()
+        self._method = 'distance'
+        device = None
+        device_idx = -1
+        if device_idx >= 0:
+            device = torch.device("cuda", device_idx)
+        else:
+            device = torch.device("cpu")
+        # behavior_cloning_path = os.path.dirname(os.path.abspath(__file__)) + "/../multi-fidelity-behavior-cloning"
+        # sys.path.insert(0,behavior_cloning_path)
+        # from core import EnsembleCNN
+        # self.model = EnsembleCNN(env.observation_space, env.action_space, device, num_nets=1)
+        self.model = torch.load('models/model_30x30.pth', map_location=device)
+
+    def get_action(self, obs, t):
+        breakpoint()
+        action = self.model.act(obs) #FAILING HERE
+        return action
 
 class OracleCornerPolicy(Policy):
 
@@ -98,30 +136,31 @@ class OracleCornerPolicy(Policy):
         else:
             return self._corners_nodelta(t)
 
-    def _corners_delta(self, t):
+    def _corners_delta(self, t): #VAINAVI: use this and record actions in low fidelity and replicate in high fidelity
         """Corner-based policy, assuming delta actions.
         """
         pts = self.env.cloth.pts
-        assert len(pts) == 625, len(pts)
+        assert len(pts) == np.square(int(np.sqrt(len(pts))))
+        dim = int(np.sqrt(len(pts)))
         cloth = self.env.cloth
         if self.cfg['init']['type'] == 'tier2' and (not cloth.init_side):
-            self._ll = 576  # actual corner: 600
-            self._ul = 598  # actual corner: 624
-            self._lr = 26   # actual corner: 0
-            self._ur = 48   # actual corner: 24
+            self._ll = len(pts) - dim*2 + 1 #576  # actual corner: 600, these are 1 corner in from the very corner
+            self._ul = len(pts) - dim - 2  # actual corner: 624
+            self._lr = dim + 1   # actual corner: 0
+            self._ur = dim*2 - 2   # actual corner: 24
             print('NOTE! Flip the corner indices due to init side, tier 2')
             print(self._ll, self._ul, self._lr, self._ur)
         else:
-            self._ll = 26   # actual corner: 0
-            self._ul = 48   # actual corner: 24
-            self._lr = 576  # actual corner: 600
-            self._ur = 598  # actual corner: 624
+            self._ll = len(pts) - dim*2 + 1   # actual corner: 0
+            self._ul = len(pts) - dim - 2   # actual corner: 24
+            self._lr = dim + 1  # actual corner: 600
+            self._ur = dim*2 - 2  # actual corner: 624
             print('Corners are at the usual indices.')
             print(self._ll, self._ul, self._lr, self._ur)
-        x0, y0, cx0, cy0, dx0, dy0, dist0 = self._data_delta(pts[self._ur], targx=1, targy=1)
-        x1, y1, cx1, cy1, dx1, dy1, dist1 = self._data_delta(pts[self._lr], targx=1, targy=0)
-        x2, y2, cx2, cy2, dx2, dy2, dist2 = self._data_delta(pts[self._ll], targx=0, targy=0)
-        x3, y3, cx3, cy3, dx3, dy3, dist3 = self._data_delta(pts[self._ul], targx=0, targy=1)
+        x0, y0, cx0, cy0, dx0, dy0, dist0 = self._data_delta(pts[self._ur], targx=0, targy=1)
+        x1, y1, cx1, cy1, dx1, dy1, dist1 = self._data_delta(pts[self._lr], targx=0, targy=0)
+        x2, y2, cx2, cy2, dx2, dy2, dist2 = self._data_delta(pts[self._ll], targx=1, targy=0)
+        x3, y3, cx3, cy3, dx3, dy3, dist3 = self._data_delta(pts[self._ul], targx=1, targy=1)
         maxdist = max([dist0, dist1, dist2, dist3])
 
         if self._method == 'rotation':
@@ -257,10 +296,6 @@ class OracleCornerRevealPolicy(Policy):
         assert len(pts) == 625, len(pts)
         cloth = self.env.cloth
         if self.cfg['init']['type'] == 'tier2' and (not cloth.init_side):
-            #self._ll = 600
-            #self._ul = 624
-            #self._lr = 0
-            #self._ur = 24
             self._ll = 576  # actual corner: 600
             self._ul = 598  # actual corner: 624
             self._lr = 26   # actual corner: 0
@@ -268,10 +303,6 @@ class OracleCornerRevealPolicy(Policy):
             print('NOTE! Flip the corner indices due to init side, tier 2')
             print(self._ll, self._ul, self._lr, self._ur)
         else:
-            #self._ll = 0
-            #self._ul = 24
-            #self._lr = 600
-            #self._ur = 624
             self._ll = 26   # actual corner: 0
             self._ul = 48   # actual corner: 24
             self._lr = 576  # actual corner: 600
@@ -355,7 +386,6 @@ class OracleCornerRevealPolicy(Policy):
         else:
             action = (x, y, dx * self._sign, dy * self._sign)
         return action
-
 
 class HarrisCornerPolicy(Policy):
     """Note: strongly recommended we don't do this. It will fail miserably.
@@ -507,8 +537,6 @@ class HarrisCornerPolicy(Policy):
                  color=GREEN, thickness=1)
         cv2.line(img_h, (cnr[0]+w, cnr[1]-w), (cnr[0]-w, cnr[1]+w),
                  color=GREEN, thickness=1)
-        #cv2.circle(img_h, center=___, radius=22, color=BLUE, thickness=4)
-        #cv2.circle(img_h, center=___, radius=22, color=RED, thickness=4)
 
         return corners, closest, img_h
 
@@ -608,8 +636,6 @@ class HighestPointPolicy(Policy):
             print('tier {}, originally ({:.3f},{:.3f},{:.3f})'.format(
                     self.cfg['init']['type'], x, y, z))
         else:
-            #x = int(pt_idx / 25) / 24.
-            #y = (pt % 25) / 24.
             x = pt.orig_x
             y = pt.orig_y
             z = pt.orig_z
@@ -684,7 +710,7 @@ def run(args, policy):
                     args.max_episodes
         )
         result_path = args.result_path.replace('.pkl', '{}.pkl'.format(stuff))
-        assert not cfg['env']['force_grab'], 'Do not need force_grab for analytic'
+        # assert not cfg['env']['force_grab'], 'Do not need force_grab for analytic'
         print('\nOur result_path:\n\t{}'.format(result_path))
     np.random.seed(seed)
 
@@ -704,6 +730,7 @@ def run(args, policy):
     variance_inv = []
     nb_steps = []
 
+    # actions = []
     for ep in range(args.max_episodes):
         obs = env.reset()
         # Go through one episode and put information in `stats_ep`.
@@ -715,8 +742,9 @@ def run(args, policy):
 
         while not done:
             action = policy.get_action(obs, t=num_steps)
+            # actions.append(action)
             obs, rew, done, info = env.step(action)
-            stats_ep['obs'].append(obs)
+            stats_ep['obs'].append(obs) 
             stats_ep['rew'].append(rew)
             stats_ep['act'].append(action)
             stats_ep['done'].append(done)
@@ -735,15 +763,13 @@ def run(args, policy):
                 np.mean(variance_inv), np.std(variance_inv)))
         print('  {:.2f} +/- {:.1f} (steps per episode)'.format(
                 np.mean(nb_steps), np.std(nb_steps)))
-
-        # Just dump here to keep saving and overwriting.
         with open(result_path, 'wb') as fh:
             pickle.dump(stats_all, fh)
 
     assert len(stats_all) == args.max_episodes, len(stats_all)
     if env.render_proc is not None:
         env.render_proc.terminate()
-        env.cloth.stop_render()
+        # env.cloth.stop_render()
 
 
 if __name__ == "__main__":
@@ -768,6 +794,14 @@ if __name__ == "__main__":
         policy = RandomPolicy()
     elif args.policy == 'oracle_reveal':
         policy = OracleCornerRevealPolicy()
+    elif args.policy == 'set_actions':
+        policy = SetActionsPolicy(np.load('actions_10x10.npy'))
+    elif args.policy == "behavior_cloning":
+        behavior_cloning_path = os.path.dirname(os.path.abspath(__file__)) + "/../../multi-fidelity-behavior-cloning"
+        sys.path.insert(0, behavior_cloning_path)
+        from lazydagger import GymClothEnv
+        env  = GymClothEnv()
+        policy = CornerPullingBCPolicy(env)
     else:
         raise ValueError(args.policy)
 
@@ -780,8 +814,7 @@ if __name__ == "__main__":
 
     # Each time we use the environment, we need to pass in some configuration.
     args.file_path = fp = os.path.dirname(os.path.realpath(__file__))
-    #args.cfg_file = join(fp, '../cfg/demo_baselines.yaml') # BASELINES!
-    args.cfg_file = join(fp, '../cfg/t{}_rgbd.yaml'.format(args.tier))
+    args.cfg_file = join(fp, '../cfg/demo_baselines.yaml') # BASELINES!
     args.render_path = join(fp, '../render/build')    # Must be compiled!
     args.result_path = join(fp, '../logs/{}'.format(result_pkl))
 

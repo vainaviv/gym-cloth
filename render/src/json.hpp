@@ -7873,7 +7873,7 @@ class basic_json
                 }
                 else if (exp != 31)
                 {
-                    val = std::ldexp(mant + 1024, exp - 25);
+                    val = std::ldexp(mant + 1024, exp - 25); //VAINAVI: CHANGE. Original is 25.
                 }
                 else
                 {

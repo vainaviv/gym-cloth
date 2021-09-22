@@ -68,7 +68,7 @@ def analyze(data, lengths, use_img=False):
     num_transitions = 0
 
     # For average pixel values?
-    average_img = np.zeros((100,100,4))
+    average_img = np.zeros((100,100,3))
     average_nb = 0
 
     for eidx,ep in enumerate(data):
@@ -76,7 +76,7 @@ def analyze(data, lengths, use_img=False):
         # Hacky but we do what we have to do ... assumes we know a specified index.
         # I use this for generating examples of oracle corner pulling policy.
         if eidx == 4:
-            print('\nat our desired index, here is the e info, for the last time stpe:')
+            print('\nat our desired index, here is the e info, for the last time step:')
             _einfo = ep['info']
             #print(_einfo)
             for item in _einfo:
@@ -95,7 +95,7 @@ def analyze(data, lengths, use_img=False):
                     str(eidx).zfill(3), str(t).zfill(2), rew, act[0], act[1], act[2], act[3])
             fname = join('logs',suffix)
 
-            if use_img:
+            if use_img and (t == 0):
                 # Right now images are actually 224x224 and we forcibly resize in code,
                 # because this gives the option of using pre-trained residual networks.
                 assert img is not None
@@ -103,17 +103,22 @@ def analyze(data, lengths, use_img=False):
                         or img.shape == (224,224,4), img.shape
                 cv2.imwrite(fname, img)
 
+                info_last = ep['info'][t]
+                if t == 0:
+                    print(str(eidx) + " starting coverage:" + str(info_last['start_coverage']))
+                
                 # JUST IN CASE. The resized one is what the network sees.
                 coverage = 100.0
                 x = cv2.resize(img, (100,100))
                 suffix = 'img_resized_ep_{}_t_{}_rew_{:.1f}_act_{:.2f}_{:.2f}_{:.2f}_{:.2f}_c_cov{:.1f}.png'.format(
                         str(eidx).zfill(3), str(t).zfill(2), rew, act[0], act[1], act[2], act[3], coverage)
                 fname = join('logs',suffix)
-                cv2.imwrite(fname, x[:,:,:3])
-                suffix = 'img_resized_ep_{}_t_{}_rew_{:.1f}_act_{:.2f}_{:.2f}_{:.2f}_{:.2f}_d_cov{:.1f}.png'.format(
-                        str(eidx).zfill(3), str(t).zfill(2), rew, act[0], act[1], act[2], act[3], coverage)
-                fname = join('logs',suffix)
-                cv2.imwrite(fname, x[:,:,3])
+                # cv2.imwrite(fname, x[:,:,:3])
+                # suffix = 'img_resized_ep_{}_t_{}_rew_{:.1f}_act_{:.2f}_{:.2f}_{:.2f}_{:.2f}_d_cov{:.1f}.png'.format(
+                #         str(eidx).zfill(3), str(t).zfill(2), rew, act[0], act[1], act[2], act[3], coverage)
+                # fname = join('logs',suffix)
+                # cv2.imwrite(fname, x[:,:,3])
+
                 average_img += x
                 average_nb += 1
 
@@ -135,16 +140,18 @@ def analyze(data, lengths, use_img=False):
             suffix = 'img_resized_ep_{}_t_{}_lastobs_c.png'.format(
                     str(eidx).zfill(3), str(eplen).zfill(2))
             fname = join('logs',suffix)
-            cv2.imwrite(fname, x[:,:,:3])
-            suffix = 'img_resized_ep_{}_t_{}_lastobs_d.png'.format(
-                    str(eidx).zfill(3), str(eplen).zfill(2))
-            fname = join('logs',suffix)
-            cv2.imwrite(fname, x[:,:,3])
+
+            # cv2.imwrite(fname, x[:,:,:3])
+            # suffix = 'img_resized_ep_{}_t_{}_lastobs_d.png'.format(
+            #         str(eidx).zfill(3), str(eplen).zfill(2))
+            # fname = join('logs',suffix)
+            # cv2.imwrite(fname, x[:,:,3])
             average_img += x
             average_nb += 1
 
         # The last information, note `num_steps` is one less than num obs stored.
         info_last = ep['info'][-1]
+        print(str(eidx) + " ending coverage:" + str(info_last['actual_coverage']))
         if info_last['have_tear']:
             num_tear += 1
         if info_last['out_of_bounds']:
@@ -274,7 +281,7 @@ if __name__ == "__main__":
     #fname = 'demos-2020-02-10-15-05-pol-oracle-seed-1336_to_1340-obs-blender-depth-False-rgbd-True-tier3_epis_2000_COMBO.pkl'
 
     # ADJUST!!!! For example, if using wrinkles based policy.
-    fname = 'demos-2020-02-23-13-53-pol-oracle-seed-1337-obs-blender-depth-False-rgbd-True-tier3_epis_10.pkl'
+    fname = 'cloth_smoothing_data_30x30_all.pkl'
     USE_IMG = True
 
     fname = join('logs', fname)

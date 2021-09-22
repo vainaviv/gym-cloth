@@ -14,8 +14,8 @@
     "orientation": 0,
     "width": 1,
     "height": 1,
-    "num_width_points": 25,
-    "num_height_points": 25,
+    "num_width_points": 30,
+    "num_height_points": 30,
     "render_port": 5556,
     "thickness": 0.0095,
     "pinned": [

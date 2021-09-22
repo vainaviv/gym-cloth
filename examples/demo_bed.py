@@ -1,5 +1,7 @@
 """For demonstrations with a bed.
 """
+import matplotlib as mpl 
+mpl.use('TkAgg')
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
@@ -17,11 +19,13 @@ def test_init(config_file):
 
     For rendering, use the environment's `env.render()` method.
     """
-    load_state = True
+    load_state = False #True, set to false for testing by Vainavi
 
     env = ClothEnv(config_file)
     print("\nObs space: {}".format(env.observation_space))
     print("Act space: {}".format(env.action_space))
+
+    cloth_size = env.num_w
 
     # Start the environment and render it.
     this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -38,8 +42,10 @@ def test_init(config_file):
         obs = env.reset()
         env.save_state(state_path)
 
+    mpl.image.imsave("triangle_30x30.png", obs)
+
     print("reset took {}".format(time.time() - start))
-    print("\nJust reset, obs is:\n{}\nshape: {}".format(obs, obs.shape))
+    # print("\nJust reset, obs is:\n{}\nshape: {}".format(obs, obs.shape))
 
     # Do your hard-coded actions here.
 
@@ -48,22 +54,22 @@ def test_init(config_file):
     obs, rew, done, info = env.step(action)
     print("demo_bed.py, done: {}".format(done))
 
-    p1 = env.cloth.pts[-25]
+    p1 = env.cloth.pts[-cloth_size]
     action = ((p1.x, p1.y), 0.50, 7)
     obs, rew, done, info = env.step(action)
     print("demo_bed.py, done: {}".format(done))
 
-    p2 = env.cloth.pts[-25]
+    p2 = env.cloth.pts[-cloth_size]
     action = ((p2.x, p2.y), 0.50, 3)
     obs, rew, done, info = env.step(action)
     print("demo_bed.py, done: {}".format(done))
 
-    p3 = env.cloth.pts[-25]
+    p3 = env.cloth.pts[-cloth_size]
     action = ((p3.x, p3.y), 0.30, 2)
     obs, rew, done, info = env.step(action)
     print("demo_bed.py, done: {}".format(done))
 
-    p4 = env.cloth.pts[-(25*3)-1]
+    p4 = env.cloth.pts[-(cloth_size*3)-1]
     action = ((p4.x, p4.y), 0.30, 1)
     obs, rew, done, info = env.step(action)
     print("demo_bed.py, done: {}".format(done))
