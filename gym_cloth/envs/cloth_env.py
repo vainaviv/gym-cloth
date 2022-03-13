@@ -211,7 +211,7 @@ class ClothEnv(gym.Env):
 
     def get_blender_rep(self, use_depth):
         """Ryan: put get_blender_rep in its own method so we can easily get RGBD images."""
-        bhead = '/tmp/blender'
+        bhead = '/home/vainavi/tmp/blender'
         if not os.path.exists(bhead):
             os.makedirs(bhead)
 
@@ -270,7 +270,7 @@ class ClothEnv(gym.Env):
             )
         else:
             subprocess.call([
-                '/Applications/Blender/blender.app', '--background', '--python', bfile, '--', tm_path,
+                'blender', '--background', '--python', bfile, '--', tm_path,
                 str(self._hd), str(self._wd), str(init_side), self._init_type,
                 frame_path, self._oracle_reveal, use_depth, floor_path,
                 self.__add_dom_rand,

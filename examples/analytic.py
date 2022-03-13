@@ -88,20 +88,15 @@ class CornerPullingBCPolicy(Policy):
         super().__init__()
         self._method = 'distance'
         device = None
-        device_idx = -1
+        device_idx = 1
         if device_idx >= 0:
             device = torch.device("cuda", device_idx)
         else:
             device = torch.device("cpu")
-        # behavior_cloning_path = os.path.dirname(os.path.abspath(__file__)) + "/../multi-fidelity-behavior-cloning"
-        # sys.path.insert(0,behavior_cloning_path)
-        # from core import EnsembleCNN
-        # self.model = EnsembleCNN(env.observation_space, env.action_space, device, num_nets=1)
-        self.model = torch.load('models/model_30x30.pth', map_location=device)
+        self.model = torch.load('models/model_25x25_test_augs.pth', map_location=device)
 
     def get_action(self, obs, t):
-        breakpoint()
-        action = self.model.act(obs) #FAILING HERE
+        action = self.model.act(obs)
         return action
 
 class OracleCornerPolicy(Policy):
