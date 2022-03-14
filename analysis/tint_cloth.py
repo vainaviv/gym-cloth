@@ -6,7 +6,7 @@ from skimage import data
 from skimage import color
 from skimage import img_as_float
 
-def tint_cloth(img, light_multiplier, dark_multiplier):
+def tint_cloth(img, light_multiplier, dark_multiplier, background_multiplier):
     img = remove_border(img)
     light_mask = mask_light_blue(img)
     dark_mask = mask_dark_blue(img)
@@ -37,7 +37,7 @@ def tint_cloth(img, light_multiplier, dark_multiplier):
     background_tint = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
     grayscale_background = img_as_float(background_tint)
     background_img = color.gray2rgb(grayscale_background)
-    tint_background = background_img * [0.5, 0.5, 0.5]
+    tint_background = background_img * background_multiplier
     tint_background = tint_background * 255
     tint_background = tint_background.astype(np.uint8)
     

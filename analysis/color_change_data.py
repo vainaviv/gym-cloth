@@ -11,11 +11,12 @@ from skimage import img_as_float
 from tint_cloth import tint_cloth
 
 def tint_data(observation):
-    light_brown_multiplier = [0.50, 0.55, 0.85] #BGR
+    light_brown_multiplier = [1.0, 1.0, 1.0] #BGR
     dark_brown_multiplier = [0.5, 0.5, 0.6] #BGR
+    background_multiplier = [0.9, 0.9, 0.9]
     new_obs = []
     for i in range(len(observation)):
-        tinted_step = tint_cloth(observation[i], light_brown_multiplier, dark_brown_multiplier)
+        tinted_step = tint_cloth(observation[i], light_brown_multiplier, dark_brown_multiplier, background_multiplier)
         new_obs.append(tinted_step)
     return new_obs
 
