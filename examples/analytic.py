@@ -4,6 +4,7 @@ Use `demo_spaces.py` for other debugging.
 """
 import subprocess
 import pkg_resources
+from analysis.color_change_data import tint_data
 import numpy as np
 import torch
 import argparse
@@ -96,6 +97,7 @@ class CornerPullingBCPolicy(Policy):
         self.model = torch.load('models/model_25x25_test_augs.pth', map_location=device)
 
     def get_action(self, obs, t):
+        obs = tint_data(obs)
         action = self.model.act(obs)
         return action
 
